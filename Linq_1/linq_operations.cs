@@ -12,6 +12,8 @@ namespace Linq_1
         {
             List<Order> orders = OrderService.GetOrders();
 
+
+
             //Get all orders placed after January 1, 2023.
             //method syntax
             Console.WriteLine("All orders placed after January 1, 2023 in Method syntax");
@@ -69,8 +71,8 @@ namespace Linq_1
             //Find the order with the highest and lowest amount.
             //method syntax
             Console.WriteLine();
-            var methodHighestOrder = orders.MaxBy(x => x.OrderAmount);
-            var methodLowestOrder = orders.MinBy(x => x.OrderAmount);
+            var methodHighestOrder = orders.Max(x => x.OrderAmount); // using max will only return max value but maxby gives whole object. 
+            var methodLowestOrder = orders.MinBy(x => x.OrderAmount); // ignores null values
             Console.WriteLine($"Highest Order (Method Syntax): {methodHighestOrder}");
             Console.WriteLine($"Lowest Order (Method Syntax): {methodLowestOrder}");
 
@@ -80,6 +82,7 @@ namespace Linq_1
                                 select o).First();
 
             var querylowestOrder = (from o in orders
+                                    where o.OrderAmount > 0 // if not added this statement will get output as null because you have n
                                orderby o.OrderAmount
                                select o).First();
 
@@ -140,13 +143,24 @@ namespace Linq_1
             //Get the average order amount.
             //method syntax
             Console.WriteLine();
-            double methodaverageOrderAmount = orders.Where(o => o.OrderAmount.HasValue).Average(o => o.OrderAmount.Value); 
+            double methodaverageOrderAmount = orders.Where(o => o.OrderAmount.HasValue).Average(o => o.OrderAmount.Value); //Average(o => o.OrderAmount.Value) 
             Console.WriteLine($"Average Order Amount(Method Syntax): ${methodaverageOrderAmount:F2}");
 
             //query syntax
             Console.WriteLine();
             var queryaverageOrderAmount = (from o in orders
-                                      select o.OrderAmount).Average();
+                                      select o.OrderAmount).Average();var queryAverageOrderAmount = (from o in orders
+                               where o.OrderAmount.HasValue  // Remove nulls
+                               select o.OrderAmount.Value)   // Extract value
+                               .DefaultIfEmpty(0)            // Prevent empty list error
+                               .Average();
+
+            //var queryAverageOrderAmount = (from o in orders
+            //                               where o.OrderAmount.HasValue  // Remove nulls
+            //                               select o.OrderAmount.Value)   // Extract value
+            //                   .DefaultIfEmpty(0)            // Prevent empty list error
+            //                   .Average();
+
 
             Console.WriteLine($"Average Order Amount (Query Syntax): ${queryaverageOrderAmount:F2}");
 

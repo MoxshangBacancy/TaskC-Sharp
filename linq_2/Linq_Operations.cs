@@ -13,7 +13,7 @@ namespace linq_2
             List<Trainer2> trainers2 = TrainerList2.GetTrainerDetails2();
             List<TrainingSession> sessions = TrainingSessionList.GetTrainingSessionsDetails();
 
-            //List all trainers and the training sessions they have conducted, even if they haven't conducted any sessions.
+            // 1. List all trainers and the training sessions they have conducted.
             var trainerSessions = trainers.GroupJoin(
                                                     sessions,
                                                     trainer => trainer.TrainerID,
@@ -22,21 +22,22 @@ namespace linq_2
                                                      {
                                                       TrainerName = trainer.Name,
                                                       Expertise = trainer.Expertise,
-                                                      Sessions = sessionGroup.DefaultIfEmpty() // Ensures trainers with no sessions are included
+                                                      Sessions = sessionGroup,
                                                      }
 );
 
             foreach (var trainer in trainerSessions)
             {
-                Console.WriteLine($"Trainer: {trainer.TrainerName}, Expertise: {trainer.Expertise}");
+                Console.WriteLine($"Trainer: {trainer.TrainerName}");
                 foreach (var session in trainer.Sessions)
                 {
-                    Console.WriteLine($"  - Session: {session.Topic} on {session.SessionDate}");
+                    Console.WriteLine($"  - Session: {session.Topic}");
                 }
             }
+
             Console.WriteLine();    
 
-            //Generate a dataset that pairs each trainer with every training session, regardless of any relationship.
+            //2. Generate a dataset that pairs each trainer with every training session, regardless of any relationship.
             var trainerSessionPairs = trainers.SelectMany(
                                                           trainer => sessions,
                                                           (trainer, session) => new
@@ -55,7 +56,12 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //Retrieve a list of trainers who have conducted training sessions, displaying their name along with the topics they have taught. Ensure that only trainers with sessions appear in the output.
+            //Modify the first query to include all trainers, even those with no training sessions recorded.
+
+        
+
+
+            //4. Retrieve a list of trainers who have conducted training sessions, displaying their name along with the topics they have taught. Ensure that only trainers with sessions appear in the output.
             var onlytrainerSessions = trainers.Join(
                                                 sessions.Where(s => s.Topic != null), // Exclude sessions with null topics
                                                 trainer => trainer.TrainerID,
@@ -74,7 +80,7 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //Group all training sessions based on trainer names, displaying the total number of sessions each trainer has conducted.
+            //5. Group all training sessions based on trainer names, displaying the total number of sessions each trainer has conducted.
             var trainerSessionCounts = trainers.GroupJoin(
                                                         sessions,
                                                         trainer => trainer.TrainerID,
@@ -92,9 +98,9 @@ namespace linq_2
                 Console.WriteLine($"Trainer: {trainer.TrainerName}, Total Sessions: {trainer.SessionCount}");
             }
             Console.WriteLine();
+            //6. Implement a different LINQ query to achieve the same result and compare the outputs.
 
-
-            //List all trainers who have conducted more than 3 training sessions, using a nested LINQ query.
+            //7.List all trainers who have conducted more than 3 training sessions, using a nested LINQ query.
             var experiencedTrainers = trainers
                                      .Where(trainer => sessions.Count(session => session.TrainerID == trainer.TrainerID) > 3)
                                      .Select(trainer => new
@@ -110,7 +116,7 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //Retrieve a distinct list of training topics that have been covered.
+            //8.Retrieve a distinct list of training topics that have been covered.
             var distinctTopics = sessions
                 .Where(s => !string.IsNullOrEmpty(s.Topic)) // Exclude null or empty topics
                 .Select(s => s.Topic)
@@ -122,7 +128,7 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //Merge two trainer lists (from different departments), ensuring no duplicate trainer names.
+            //9.Merge two trainer lists (from different departments), ensuring no duplicate trainer names.
             var mergedTrainers = trainers
                                  .Select(t => new { t.Name, t.Expertise })
                                  .Concat(trainers2.Select(t => new { t.Name, t.Expertise }))
@@ -135,7 +141,7 @@ namespace linq_2
                 Console.WriteLine($" Name: {trainer.Name}, Expertise: {trainer.Expertise}");
             }
             Console.WriteLine();
-            //Identify trainers who appear in both lists.
+            //10. Identify trainers who appear in both lists.
             var commonTrainers = trainers
                                  .Select(t => t.Name) // Extract only names from Trainer1
                                  .Intersect(trainers2.Select(t => t.Name)) // Find common names in both lists
@@ -149,7 +155,7 @@ namespace linq_2
             }
             Console.WriteLine() ;
 
-            //Find trainers who exist in one list but not in the other.
+            //11. Find trainers who exist in one list but not in the other.
 
             // Trainers in List 1 but not in List 2
             var trainersOnlyInList1 = trainers
@@ -177,7 +183,7 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //A dataset contains duplicate trainer names due to data entry errors. Write a LINQ query to filter out duplicates and return a distinct list of trainer names.
+            //12. A dataset contains duplicate trainer names due to data entry errors. Write a LINQ query to filter out duplicates and return a distinct list of trainer names.
             var distinctTrainerNames = trainers
                                       .Select(t => t.Name)
                                       .Distinct()
@@ -190,7 +196,7 @@ namespace linq_2
                 Console.WriteLine(name);
             }
             Console.WriteLine();
-            //Write a LINQ query that retrieves trainer names but delays execution.Modify the dataset before execution and analyze how the results change.
+            //13. Write a LINQ query that retrieves trainer names but delays execution.Modify the dataset before execution and analyze how the results change.
             // LINQ query with deferred execution
             var trainerNames = trainers.Select(t => t.Name);
 
@@ -205,7 +211,7 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //Convert the query to execute immediately and compare the results.
+            //14. Convert the query to execute immediately and compare the results.
             // Immediate Execution - forces execution now
             var ItrainerNames = trainers.Select(t => t.Name).ToList();
 
