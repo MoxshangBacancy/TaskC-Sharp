@@ -24,7 +24,7 @@ namespace linq_2
                     Expertise = trainer.Expertise,
                     Sessions = sessions.Where(s => s.TrainerID == trainer.TrainerID && s.Topic != null).ToList()
                 })
-                .Where(t => t.Sessions.Any()) // Exclude trainers without valid sessions
+                .Where(t => t.Sessions.Any()) 
                 .ToList();
 
             // Display results
@@ -87,7 +87,7 @@ namespace linq_2
 
             //4. Retrieve a list of trainers who have conducted training sessions, displaying their name along with the topics they have taught. Ensure that only trainers with sessions appear in the output.
             var onlytrainerSessions = trainers.Join(
-                                                sessions.Where(s => s.Topic != null), // Exclude sessions with null topics
+                                                sessions.Where(s => s.Topic != null),
                                                 trainer => trainer.TrainerID,
                                                 session => session.TrainerID,
                                                 (trainer, session) => new
@@ -96,7 +96,7 @@ namespace linq_2
                                                   Expertise = trainer.Expertise,
                                                   Topic = session.Topic
                                                  }
-                                                ).ToList(); // Convert to list for immediate execution
+                                                ).ToList(); 
 
             foreach (var item in onlytrainerSessions)
             {
@@ -106,7 +106,7 @@ namespace linq_2
 
             //5. Group all training sessions based on trainer names, displaying the total number of sessions each trainer has conducted.
             var trainerSessionCounts = sessions
-     .Where(s => s.Topic != null) // Exclude null topics
+     .Where(s => s.Topic != null) 
      .GroupBy(s => s.TrainerID)
      .Select(g => new
      {
@@ -132,7 +132,7 @@ namespace linq_2
             Console.WriteLine();
             //6. Implement a different LINQ query to achieve the same result and compare the outputs.
             var sessionLookup = sessions
-    .Where(s => s.Topic != null) // Exclude null topics
+    .Where(s => s.Topic != null) 
     .ToLookup(s => s.TrainerID);
 
             var trainerSessionCountslookup = trainers
@@ -170,7 +170,7 @@ namespace linq_2
 
             //8.Retrieve a distinct list of training topics that have been covered.
             var distinctTopics = sessions
-                .Where(s => !string.IsNullOrEmpty(s.Topic)) // Exclude null or empty topics
+                .Where(s => !string.IsNullOrEmpty(s.Topic)) 
                 .Select(s => s.Topic)
                 .Distinct()
                 .ToList();
@@ -195,8 +195,8 @@ namespace linq_2
             Console.WriteLine();
             //10. Identify trainers who appear in both lists.
             var commonTrainers = trainers
-                                 .Select(t => t.Name) // Extract only names from Trainer1
-                                 .Intersect(trainers2.Select(t => t.Name)) // Find common names in both lists
+                                 .Select(t => t.Name) 
+                                 .Intersect(trainers2.Select(t => t.Name))
                                  .ToList();
 
             // Output
@@ -271,12 +271,11 @@ namespace linq_2
             trainers.Add(new Trainer1(4, "Moxshang Shah", "Cybersecurity"));
 
             Console.WriteLine("Immediate Execution Results:");
-            foreach (var name in ItrainerNames)  // Uses already executed result
+            foreach (var name in ItrainerNames)  
             {
-                Console.WriteLine(name);  // Does NOT include "Emma Wilson"
+                Console.WriteLine(name);  
             }
             Console.WriteLine();
-
         }
     }
 
