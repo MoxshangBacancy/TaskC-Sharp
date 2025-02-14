@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,25 +14,28 @@ namespace linq_2
             List<TrainingSession> sessions = TrainingSessionList.GetTrainingSessionsDetails();
 
             // 1. List all trainers and the training sessions they have conducted.
-            var trainerSessions = trainers.GroupJoin(
-                                                    sessions,
-                                                    trainer => trainer.TrainerID,
-                                                    session => session.TrainerID,  
-                                                    (trainer, sessionGroup) => new  
-                                                     {
-                                                      TrainerName = trainer.Name,
-                                                      Expertise = trainer.Expertise,
-                                                      Sessions = sessionGroup,
-                                                     }
-);
+              var takenTrainers = trainers.GroupBy(t => t.TrainerID).Select(g => g.First()).ToList();
 
-            foreach (var trainer in trainerSessions)
+            // Join trainers and filter only valid sessions (non-null topics)
+            var ConductedSessions = takenTrainers
+                .Select(trainer => new
+                {
+                    TrainerName = trainer.Name,
+                    Expertise = trainer.Expertise,
+                    Sessions = sessions.Where(s => s.TrainerID == trainer.TrainerID && s.Topic != null).ToList()
+                })
+                .Where(t => t.Sessions.Any()) // Exclude trainers without valid sessions
+                .ToList();
+
+            // Display results
+            foreach (var trainer in ConductedSessions)
             {
-                Console.WriteLine($"Trainer: {trainer.TrainerName}");
+                Console.WriteLine($"Trainer: {trainer.TrainerName} ({trainer.Expertise})");
                 foreach (var session in trainer.Sessions)
                 {
-                    Console.WriteLine($"  - Session: {session.Topic}");
+                    Console.WriteLine($"  - Session: {session.Topic} on {session.SessionDate:yyyy-MM-dd}");
                 }
+                Console.WriteLine();
             }
 
             Console.WriteLine();    
@@ -56,9 +59,30 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //Modify the first query to include all trainers, even those with no training sessions recorded.
+            //3. Modify the first query to include all trainers, even those with no training sessions recorded.
+            var uniqueTrainers = trainers.GroupBy(t => t.TrainerID).Select(g => g.First()).ToList();
 
-        
+            var trainerSessions = uniqueTrainers.GroupJoin(
+                sessions,
+                trainer => trainer.TrainerID,
+                session => session.TrainerID,
+                (trainer, sessionGroup) => new
+                {
+                    TrainerName = trainer.Name,
+                    Expertise = trainer.Expertise,
+                    Sessions = sessionGroup.Any() ? sessionGroup : new List<TrainingSession> { new TrainingSession(0, trainer.TrainerID, "No sessions conducted", DateTime.MinValue) }
+                });
+
+            foreach (var trainer in trainerSessions)
+            {
+                Console.WriteLine($"Trainer: {trainer.TrainerName} ({trainer.Expertise})");
+                foreach (var session in trainer.Sessions)
+                {
+                    Console.WriteLine($"  - Session: {session.Topic ?? "No Topic"} on {session.SessionDate:yyyy-MM-dd}");
+                }
+                Console.WriteLine();
+            }
+
 
 
             //4. Retrieve a list of trainers who have conducted training sessions, displaying their name along with the topics they have taught. Ensure that only trainers with sessions appear in the output.
@@ -81,24 +105,52 @@ namespace linq_2
             Console.WriteLine();
 
             //5. Group all training sessions based on trainer names, displaying the total number of sessions each trainer has conducted.
-            var trainerSessionCounts = trainers.GroupJoin(
-                                                        sessions,
-                                                        trainer => trainer.TrainerID,
-                                                        session => session.TrainerID,
-                                                        (trainer, sessionGroup) => new
-                                                         {
-                                                          TrainerName = trainer.Name,
-                                                          SessionCount = sessionGroup.Count(s => s.Topic != null) // Excludes null topics
-                                                          }
-                                                         ).ToList();
-           // Convert to list for execution
-
+            var trainerSessionCounts = sessions
+     .Where(s => s.Topic != null) // Exclude null topics
+     .GroupBy(s => s.TrainerID)
+     .Select(g => new
+     {
+         TrainerID = g.Key,
+         SessionCount = g.Count()
+     })
+     .Join(trainers,
+           sessionGroup => sessionGroup.TrainerID,
+           trainer => trainer.TrainerID,
+           (sessionGroup, trainer) => new
+           {
+               TrainerName = trainer.Name,
+               SessionCount = sessionGroup.SessionCount
+           })
+     .ToList();
+            Console.WriteLine("USING GROUPBY");// Deferred Execution
+            // Iterating over results
             foreach (var trainer in trainerSessionCounts)
             {
-                Console.WriteLine($"Trainer: {trainer.TrainerName}, Total Sessions: {trainer.SessionCount}");
+                Console.WriteLine($"Trainer: {trainer.TrainerName}, Sessions Conducted: {trainer.SessionCount}");
             }
+
             Console.WriteLine();
             //6. Implement a different LINQ query to achieve the same result and compare the outputs.
+            var sessionLookup = sessions
+    .Where(s => s.Topic != null) // Exclude null topics
+    .ToLookup(s => s.TrainerID);
+
+            var trainerSessionCountslookup = trainers
+                .Select(trainer => new
+                {
+                    TrainerName = trainer.Name,
+                    SessionCount = sessionLookup[trainer.TrainerID].Count()
+                })
+                .ToList();
+
+
+            Console.WriteLine("USING LOOKUP"); //immediate executions
+            // Iterating over results
+            foreach (var trainer in trainerSessionCountslookup)
+            {
+                Console.WriteLine($"Trainer: {trainer.TrainerName}, Sessions Conducted: {trainer.SessionCount}");
+            }
+
 
             //7.List all trainers who have conducted more than 3 training sessions, using a nested LINQ query.
             var experiencedTrainers = trainers
