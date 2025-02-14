@@ -14,35 +14,38 @@ namespace linq_2
             List<TrainingSession> sessions = TrainingSessionList.GetTrainingSessionsDetails();
 
             // 1. List all trainers and the training sessions they have conducted.
-              var takenTrainers = trainers.GroupBy(t => t.TrainerID).Select(g => g.First()).ToList();
+            //3. Modify the first query to include all trainers, even those with no training sessions recorded.
+            var uniqueTrainers = trainers.GroupBy(t => t.TrainerID).Select(g => g.First()).ToList();
 
-            // Join trainers and filter only valid sessions (non-null topics)
-            var ConductedSessions = takenTrainers
-                .Select(trainer => new
+            var trainerSessions = uniqueTrainers.GroupJoin(
+                sessions,
+                trainer => trainer.TrainerID,
+                session => session.TrainerID,
+                (trainer, sessionGroup) => new
                 {
                     TrainerName = trainer.Name,
                     Expertise = trainer.Expertise,
-                    Sessions = sessions.Where(s => s.TrainerID == trainer.TrainerID && s.Topic != null).ToList()
-                })
-                .Where(t => t.Sessions.Any()) 
-                .ToList();
-
-            // Display results
-            foreach (var trainer in ConductedSessions)
+                    Sessions = sessionGroup.Any() ? sessionGroup : new List<TrainingSession>()
+                    //    : new List<TrainingSession> { new TrainingSession(0, trainer.TrainerID, "No sessions conducted", DateTime.MinValue) }; can use this just for good practise.
+                    // Empty list instead of dummy session
+                });
+            Console.WriteLine("1. and 3.");
+            foreach (var trainer in trainerSessions)
             {
                 Console.WriteLine($"Trainer: {trainer.TrainerName} ({trainer.Expertise})");
                 foreach (var session in trainer.Sessions)
                 {
-                    Console.WriteLine($"  - Session: {session.Topic} on {session.SessionDate:yyyy-MM-dd}");
+                    Console.WriteLine($"  - Session: {session.Topic ?? "No Topic"}");
                 }
                 Console.WriteLine();
             }
 
+
             Console.WriteLine();    
 
             //2. Generate a dataset that pairs each trainer with every training session, regardless of any relationship.
-            var trainerSessionPairs = trainers.SelectMany(
-                                                          trainer => sessions,
+            var trainerSessionPairs = trainers.Join( sessions,
+                                                          trainer=>true, sessions => true,
                                                           (trainer, session) => new
                                                             {
                                                                TrainerName = trainer.Name,
@@ -59,35 +62,9 @@ namespace linq_2
             }
             Console.WriteLine();
 
-            //3. Modify the first query to include all trainers, even those with no training sessions recorded.
-            var uniqueTrainers = trainers.GroupBy(t => t.TrainerID).Select(g => g.First()).ToList();
-
-            var trainerSessions = uniqueTrainers.GroupJoin(
-                sessions,
-                trainer => trainer.TrainerID,
-                session => session.TrainerID,
-                (trainer, sessionGroup) => new
-                {
-                    TrainerName = trainer.Name,
-                    Expertise = trainer.Expertise,
-                    Sessions = sessionGroup.Any() ? sessionGroup : new List<TrainingSession> { new TrainingSession(0, trainer.TrainerID, "No sessions conducted", DateTime.MinValue) }
-                });
-
-            foreach (var trainer in trainerSessions)
-            {
-                Console.WriteLine($"Trainer: {trainer.TrainerName} ({trainer.Expertise})");
-                foreach (var session in trainer.Sessions)
-                {
-                    Console.WriteLine($"  - Session: {session.Topic ?? "No Topic"} on {session.SessionDate:yyyy-MM-dd}");
-                }
-                Console.WriteLine();
-            }
-
-
-
             //4. Retrieve a list of trainers who have conducted training sessions, displaying their name along with the topics they have taught. Ensure that only trainers with sessions appear in the output.
-            var onlytrainerSessions = trainers.Join(
-                                                sessions.Where(s => s.Topic != null),
+            var onlytrainerSessions = trainers.Join(//inner join.
+                                                sessions.Where(s => s.Topic != null), 
                                                 trainer => trainer.TrainerID,
                                                 session => session.TrainerID,
                                                 (trainer, session) => new
@@ -97,7 +74,7 @@ namespace linq_2
                                                   Topic = session.Topic
                                                  }
                                                 ).ToList(); 
-
+            Console.WriteLine("4.");
             foreach (var item in onlytrainerSessions)
             {
                 Console.WriteLine($"Trainer: {item.TrainerName} ({item.Expertise}) -> Topic: {item.Topic}");
@@ -106,7 +83,7 @@ namespace linq_2
 
             //5. Group all training sessions based on trainer names, displaying the total number of sessions each trainer has conducted.
             var trainerSessionCounts = sessions
-     .Where(s => s.Topic != null) 
+     .Where(s => s.Topic != null)
      .GroupBy(s => s.TrainerID)
      .Select(g => new
      {
@@ -122,7 +99,21 @@ namespace linq_2
                SessionCount = sessionGroup.SessionCount
            })
      .ToList();
-            Console.WriteLine("USING GROUPBY");// Deferred Execution
+     // var trainerSessionCounts = trainers
+     //.GroupJoin(
+     //    sessions.Where(s => s.Topic != null),
+     //    trainer => trainer.TrainerID,
+     //    session => session.TrainerID,
+     //    (trainer, sessionGroup) => new
+     //    {
+     //        TrainerName = trainer.Name,
+     //        SessionCount = sessionGroup.Count()
+     //    }
+     //)
+     //.ToList();
+
+
+            Console.WriteLine("5. USING GROUPBY");// Deferred Execution
             // Iterating over results
             foreach (var trainer in trainerSessionCounts)
             {
@@ -131,11 +122,13 @@ namespace linq_2
 
             Console.WriteLine();
             //6. Implement a different LINQ query to achieve the same result and compare the outputs.
+           
+
             var sessionLookup = sessions
-    .Where(s => s.Topic != null) 
+    .Where(s => s.Topic != null) // Exclude null topics
     .ToLookup(s => s.TrainerID);
 
-            var trainerSessionCountslookup = trainers
+            var trainerSessionCountslookup = trainers 
                 .Select(trainer => new
                 {
                     TrainerName = trainer.Name,
@@ -144,13 +137,13 @@ namespace linq_2
                 .ToList();
 
 
-            Console.WriteLine("USING LOOKUP"); //immediate executions
+            Console.WriteLine("6. USING LOOKUP"); //immediate executions
             // Iterating over results
             foreach (var trainer in trainerSessionCountslookup)
             {
                 Console.WriteLine($"Trainer: {trainer.TrainerName}, Sessions Conducted: {trainer.SessionCount}");
             }
-
+            Console.WriteLine();
 
             //7.List all trainers who have conducted more than 3 training sessions, using a nested LINQ query.
             var experiencedTrainers = trainers
@@ -164,7 +157,7 @@ namespace linq_2
 
             foreach (var trainer in experiencedTrainers)
             {
-                Console.WriteLine($"Trainer: {trainer.TrainerName}, Total Sessions: {trainer.SessionCount}");
+                Console.WriteLine($"7. Trainer: {trainer.TrainerName}, Total Sessions: {trainer.SessionCount}");
             }
             Console.WriteLine();
 
@@ -175,22 +168,26 @@ namespace linq_2
                 .Distinct()
                 .ToList();
 
+            Console.WriteLine("8. Total topics covered are : ");
             foreach (var topics in distinctTopics) {
-                Console.WriteLine($"Total topics covered are : {topics}");
+                Console.WriteLine($"{topics}");
             }
             Console.WriteLine();
 
+
             //9.Merge two trainer lists (from different departments), ensuring no duplicate trainer names.
+
             var mergedTrainers = trainers
-                                 .Select(t => new { t.Name, t.Expertise })
-                                 .Concat(trainers2.Select(t => new { t.Name, t.Expertise }))
+                                 .Select(t => new { t.Name })
+                                 .Concat(trainers2.Select(t => new { t.Name}))
                                  .GroupBy(t => t.Name)
                                  .Select(g => g.First())
                                  .ToList();
             // Output using foreach
+            Console.WriteLine("9. Total Trainers from both lists Name: ");
             foreach (var trainer in mergedTrainers)
             {
-                Console.WriteLine($" Name: {trainer.Name}, Expertise: {trainer.Expertise}");
+                Console.WriteLine($"{trainer.Name}");
             }
             Console.WriteLine();
             //10. Identify trainers who appear in both lists.
@@ -200,7 +197,7 @@ namespace linq_2
                                  .ToList();
 
             // Output
-            Console.WriteLine("Common Trainers :");
+            Console.WriteLine("10. Common Trainers :");
             foreach (var trainer in commonTrainers)
             {
                 Console.WriteLine($"{trainer}");
@@ -222,33 +219,35 @@ namespace linq_2
                 .ToList();
 
             // Output
-            Console.WriteLine("Trainers only in List 1:");
+            Console.WriteLine("11,a. Trainers only in List 1:");
             foreach (var trainer in trainersOnlyInList1)
             {
                 Console.WriteLine(trainer);
             }
 
-            Console.WriteLine("\nTrainers only in List 2:");
+            Console.WriteLine("\n 11,b. Trainers only in List 2:");
             foreach (var trainer in trainersOnlyInList2)
             {
                 Console.WriteLine(trainer);
             }
             Console.WriteLine();
 
-            //12. A dataset contains duplicate trainer names due to data entry errors. Write a LINQ query to filter out duplicates and return a distinct list of trainer names.
+            //12. A dataset contains duplicate trainer names due to data entry errors.
+            //Write a LINQ query to filter out duplicates and return a distinct list of trainer names.
             var distinctTrainerNames = trainers
                                       .Select(t => t.Name)
                                       .Distinct()
                                       .ToList();
 
             // Output
-            Console.WriteLine("Distinct Trainer Names:");
+            Console.WriteLine("12. Distinct Trainer Names:");
             foreach (var name in distinctTrainerNames)
             {
                 Console.WriteLine(name);
             }
             Console.WriteLine();
-            //13. Write a LINQ query that retrieves trainer names but delays execution.Modify the dataset before execution and analyze how the results change.
+            //13. Write a LINQ query that retrieves trainer names but delays execution.Modify the dataset before
+            //execution and analyze how the results change.
             // LINQ query with deferred execution
             var trainerNames = trainers.Select(t => t.Name);
 
@@ -256,7 +255,7 @@ namespace linq_2
             trainers.Add(new Trainer1(4, "Moxshang Shah", "Cybersecurity"));
 
             // Execution happens here (AFTER modification)
-            Console.WriteLine("Deferred Execution Results:");
+            Console.WriteLine("13. Deferred Execution Results:");
             foreach (var name in trainerNames)
             {
                 Console.WriteLine(name);
@@ -270,12 +269,13 @@ namespace linq_2
             // Modify dataset AFTER execution
             trainers.Add(new Trainer1(4, "Moxshang Shah", "Cybersecurity"));
 
-            Console.WriteLine("Immediate Execution Results:");
-            foreach (var name in ItrainerNames)  
+            Console.WriteLine("14. Immediate Execution Results:");
+            foreach (var name in ItrainerNames) 
             {
                 Console.WriteLine(name);  
             }
             Console.WriteLine();
+
         }
     }
 
